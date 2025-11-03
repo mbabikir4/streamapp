@@ -7,6 +7,17 @@ from st_tables import display_table_with_expandable_rows
 import ast
 
 # Get data from session state
+
+
+
+
+# ADDED: Safety check at the top
+if "company" not in st.session_state or "company_data" not in st.session_state:
+    st.warning(" Please select a company first from the main page")
+    st.info("Go to the main page to select a company")
+    st.stop()
+    
+    
 chosen_company = st.session_state["company"]
 company = st.session_state["company_data"]
 
@@ -55,7 +66,7 @@ if hasattr(aws_doc_for_year, chosen_statement_for_doc):
     st.subheader(f"{chosen_statement_for_doc} - {chosen_year_for_company}")
 
     # Add download button for the statement
-    csv = statement_df.to_csv(index=True)
+    csv = statement_df.to_csv(index=False)
     st.download_button(
         label=f" Download {chosen_statement_for_doc}",
         data=csv,

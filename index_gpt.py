@@ -10,6 +10,14 @@ os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
 os.environ['AWS_DEFAULT_REGION'] = st.secrets['AWS_DEFAULT_REGION']
 
 
+if "company" not in st.session_state:
+    st.session_state["company"] = None
+if "company_data" not in st.session_state:
+    st.session_state["company_data"] = None
+    
+    
+
+
 st.set_page_config(layout="wide")
 st.header('Companies Info')
 
@@ -30,10 +38,18 @@ if not chosen_company:
 # Step 3: load_s3 company data (only runs if company is selected)
 company = load_single_company(chosen_company, s3_path)
 
-if chosen_company:
+
+if st.session_state["company"] != chosen_company:
+    # Load new company
+    company = load_single_company(chosen_company, s3_path)
     st.session_state["company"] = chosen_company
     st.session_state["company_data"] = company
-
+else:
+    # Use cached data (faster!)
+    chosen_company = st.session_state["company"]
+    company =  st.session_state["company_data"]
+    
+    
 # Stop here if company failed to load
 if company is None:
     st.error("Failed to load company data")
