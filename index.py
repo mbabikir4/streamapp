@@ -3,8 +3,6 @@ import pandas as pd
 import json
 import sys
 import load
-sys.path.append('../')  # Add the folder to Python's search path
-
 # company_dict = pickle.load( open("../ipynb/company_dict.pkl", "rb" ))
 
 
