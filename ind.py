@@ -38,14 +38,36 @@ if not chosen_statement_for_doc:
 
 
 #  Display the statement
+# if hasattr(aws_doc_for_year, chosen_statement_for_doc):
+#     statement_df = getattr(aws_doc_for_year, chosen_statement_for_doc)
+#     st.subheader(f"{chosen_statement_for_doc} - {chosen_year_for_company}")
+
+#       # CONVERT PATH COLUMN FROM STRING TO LIST
+#     if 'path' in statement_df.columns:
+#         statement_df['path'] = statement_df['path'].apply(
+#             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() else []
+#         )
+    
+    # display_table_with_expandable_rows(statement_df,'path',aws_doc_for_year.notes_tables)
+    
 if hasattr(aws_doc_for_year, chosen_statement_for_doc):
     statement_df = getattr(aws_doc_for_year, chosen_statement_for_doc)
     st.subheader(f"{chosen_statement_for_doc} - {chosen_year_for_company}")
 
-      # CONVERT PATH COLUMN FROM STRING TO LIST
+    # Add download button for the statement
+    csv = statement_df.to_csv(index=True)
+    st.download_button(
+        label=f" Download {chosen_statement_for_doc}",
+        data=csv,
+        file_name=f"{chosen_statement_for_doc}_{chosen_year_for_company}.csv",
+        mime="text/csv",
+        key=f"download_{chosen_statement_for_doc}_{chosen_year_for_company}"
+    )
+
+    # CONVERT PATH COLUMN FROM STRING TO LIST
     if 'path' in statement_df.columns:
         statement_df['path'] = statement_df['path'].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() else []
         )
     
-    display_table_with_expandable_rows(statement_df,'path',aws_doc_for_year.notes_tables)
+    display_table_with_expandable_rows(statement_df, 'path', aws_doc_for_year.notes_tables)
