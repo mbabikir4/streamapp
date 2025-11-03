@@ -9,7 +9,6 @@ from main.class_helpers import get_statements
 from main.merging import concat_sts
 # from main.merging_old import concat_sts
 from main.notes import get_notes,numify
-from IPython.display import display
 
 
 class AWSDocument:
