@@ -2,3 +2,6 @@ streamlit
 boto3
 pandas
 pyarrow
+textractor
+numpy
+rapidfuzz
