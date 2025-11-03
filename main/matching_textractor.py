@@ -1,0 +1,225 @@
+"""
+Financial Statement Matching using Textractor Library
+Adapted to use amazon-textract-textractor for document analysis
+"""
+
+from textractor.data.constants import TextractType
+from textractor.entities.document import Document
+from rapidfuzz import fuzz
+
+
+def fuzzy_match(text, keywords, threshold=95):
+    """
+    Check if text fuzzy matches any keyword using rapidfuzz (fast!)
+    
+    Args:
+        text: String to match against keywords
+        keywords: List of keyword strings to match
+        threshold: Similarity threshold (0 to 100), default 80
+        
+    Returns:
+        bool: True if any keyword matches above threshold
+    """
+    if not text or not keywords:
+        return False
+    
+    text_lower = text.lower().strip()
+    
+    for keyword in keywords:
+        keyword_lower = keyword.lower().strip()
+        
+        # Try partial_ratio (good for substring matching)
+        partial_score = fuzz.partial_ratio(keyword_lower, text_lower)
+        if partial_score >= threshold:
+            return True
+        
+        # Also try token_sort_ratio (good for word order differences)
+        token_score = fuzz.token_sort_ratio(keyword_lower, text_lower)
+        if token_score >= threshold:
+            return True
+    
+    return False
+# Statement title patterns
+BALANCE_SHEET = [
+    "STATEMENT OF FINANCIAL POSITION",
+    "BALANCE SHEET"
+]
+
+TITLES_OF_PROFIT = [
+    "STATEMENT OF PROFIT OR LOSS",
+    "INCOME STATEMENT",
+    "PROFIT AND LOSS STATEMENT"
+]
+
+STATEMENT_OF_COMPREHENSIVE_INCOME = [
+    "STATEMENT OF COMPREHENSIVE INCOME",
+    "COMPREHENSIVE INCOME STATEMENT"
+]
+
+STATEMENT_OF_EQUITY = [
+    "STATEMENT OF CHANGES IN EQUITY",
+    "EQUITY STATEMENT",
+    "CHANGES IN EQUITY",
+    "CHANGE IN EQUITY",
+]
+
+CASH_FLOW = [
+    "STATEMENT OF CASH FLOWS",
+    "CASH FLOW STATEMENT"
+]
+
+NOTES_STATEMENT = [
+    "Notes to the Financial Statements",
+    "Notes to the Consolidated Financial Statements",
+    "Notes to the Accounts",
+    "Financial Statement Notes",
+    "Notes to the Annual Financial Statements",
+    "Schedule of Notes to the Financial Statements",
+    "Explanatory Notes",
+    "Notes and Disclosures",
+    "Accounting Policies and Notes",
+    "Notes to Financial Statements Detail",
+    "Supplementary Notes"
+]
+
+# Keyword matching patterns
+balance_sheet_keywords = [
+    "current assets", "cash and cash equivalents", "accounts receivable", "inventory",
+    "current liabilities", "accounts payable", "short-term debt",
+    "shareholder equity", "retained earnings", "common stock"
+]
+
+income_statement_keywords = [
+    "sales revenue", "service revenue", 
+    "cost of goods sold", "operating expenses", "administrative expenses",
+    "gross profit", "operating income", "net income"
+]
+
+comprehensive_income_keywords = [
+    "net income", "other comprehensive income",
+    "foreign currency translation adjustments", "unrealized gains", "unrealized losses",
+    "total comprehensive income"
+]
+
+changes_in_equity_keywords = [
+    "opening balance", "total comprehensive income", 
+    "dividends paid", "share issuances", "share repurchases",
+    "closing balance"
+]
+
+cash_flow_keywords = [
+    "operating activities", "cash received from customers", "cash paid to suppliers",
+    "investing activities", "purchase of fixed assets", "sales of investments",
+    "financing activities", "proceeds from issuing debt", "payments of dividends"
+]
+
+
+def has_table_on_page(page):
+    """
+    Check if a page contains any tables
+    
+    Args:
+        page: Textractor Page object
+        
+    Returns:
+        bool: True if page has tables, False otherwise
+    """
+    return len(page.tables) > 0
+
+
+def match_statement_by_line(document):
+    """
+    Match financial statements by analyzing line text at the top of pages with tables
+    Uses fuzzy matching to handle typos and variations in statement titles
+    
+    Args:
+        document: Textractor Document object
+        
+    Returns:
+        dict: Dictionary mapping page numbers to statement types
+    """
+    listOfMents = {}
+    
+    for page in document.pages:
+        page_num = page.page_num
+        
+        # Check if page has tables
+        if not has_table_on_page(page):
+            continue
+        
+        # Iterate through lines on the page
+        for line in page.lines:
+            # Check if line is in the top 15% of the page
+            # bbox returns a BoundingBox object with x, y, width, height
+            if line.bbox.y < 0.15:
+                text = line.text
+                
+                # Match against statement patterns using fuzzy matching
+                # Use elif to prevent multiple matches on same page
+                if fuzzy_match(text, BALANCE_SHEET):
+                    listOfMents[page_num] = "BALANCE_SHEET"
+                elif fuzzy_match(text, TITLES_OF_PROFIT):
+                    listOfMents[page_num] = "INCOME_STATEMENT"
+                elif fuzzy_match(text, STATEMENT_OF_COMPREHENSIVE_INCOME):
+                    listOfMents[page_num] = "COMPREHENSIVE_INCOME_STATEMENT"
+                elif fuzzy_match(text, STATEMENT_OF_EQUITY):
+                    listOfMents[page_num] = "EQUITY"
+                elif fuzzy_match(text, CASH_FLOW):
+                    listOfMents[page_num] = "CASH_FLOW"
+    
+    return listOfMents
+
+
+
+def get_notes_start_page(document):
+    """
+    Find the page where notes to financial statements begin
+    
+    Args:
+        document: Textractor Document object
+        
+    Returns:
+        int: Page number where notes start, or 0 if not found
+    """
+    for page in document.pages:
+        for line in page.lines:
+            # Check if line is in the top 10% of the page and contains "notes"
+            # bbox.y represents the top position
+            if line.bbox.y < 0.1 and "notes" in line.text.lower():
+                return page.page_num
+    
+    return 0
+
+
+def get_reporting_date(page):
+    
+    for line in page.lines:
+        if line.bbox.y < 0.4:  # Added 'if'
+            if 'december' in line.text.lower():  # Changed to 'in'
+                return True
+    return False
+    
+
+
+# Example usage:
+"""
+from textractor import Textractor
+from textractor.data.constants import TextractFeatures
+
+# Initialize Textractor
+extractor = Textractor(profile_name="default")
+
+# Analyze document
+document = extractor.analyze_document(
+    file_source="path/to/financial_statement.pdf",
+    features=[TextractFeatures.TABLES]
+)
+
+# Match financial statements
+statements = match_statement_by_line(document)
+print("Detected statements:", statements)
+
+# Find notes start page
+notes_page = get_notes_start_page(document)
+print(f"Notes begin on page: {notes_page}")
+"""
