@@ -2,16 +2,13 @@ import streamlit as st
 import pandas as pd
 import json
 import sys
-import load_s3
-
+from load_s3 import get_available_tickers,load_single_company
 
 import os 
 os.environ['AWS_ACCESS_KEY_ID'] = st.secrets['AWS_ACCESS_KEY_ID']
 os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
 os.environ['AWS_DEFAULT_REGION'] = st.secrets['AWS_DEFAULT_REGION']
 
-
-sys.path.append('../')  # Add the folder to Python's search path
 
 st.set_page_config(layout="wide")
 st.header('Companies Info')
@@ -20,7 +17,7 @@ st.header('Companies Info')
 s3_path = 's3://project-z-test-stream/company-data'
 
 # Step 1: Get available tickers
-all_tickers = load_s3.get_available_tickers()
+all_tickers = get_available_tickers()
 
 # Step 2: Select company (wait for user selection)
 chosen_company = st.selectbox('Select a company', all_tickers)
@@ -31,7 +28,7 @@ if not chosen_company:
 
 
 # Step 3: load_s3 company data (only runs if company is selected)
-company = load_s3.load_single_company(chosen_company, s3_path)
+company = load_single_company(chosen_company, s3_path)
 
 if chosen_company:
     st.session_state["company"] = chosen_company
